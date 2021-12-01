@@ -1,0 +1,565 @@
+\documentclass[xor=table]{beamer}
+% aspectratio=169 Ratio 16:9
+
+\usepackage{lmodern}
+\usetheme{Boadilla}
+
+
+\setbeamertemplate{navigation symbols}{}
+\usepackage{hhline,colortbl}
+\usepackage{tabu}
+\usepackage{caption}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{appendixnumberbeamer} 
+\usepackage{multicol,caption}
+\usepackage[absolute,overlay]{textpos}
+\usepackage{setspace}
+
+
+
+%colors
+\usepackage{color}
+\definecolor{Lblue}{RGB}{0,128,225}
+\definecolor{Dblue}{RGB}{13,13,88}
+\definecolor{mygray}{gray}{0.5}
+
+
+\usecolortheme[named=Lblue]{structure}
+
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+%\usepackage[citestyle=authoryear,natbib=true,backend=bibtex]{biblatex}
+
+
+\def\itemsymbol{\textbullet}
+\let\svpar\par
+\let\svitemize\itemize
+\let\svenditemize\enditemize
+\let\svitem\item
+\let\svcenter\center
+\let\svendcenter\endcenter
+\let\svcolumn\column
+\let\svendcolumn\endcolumn
+\def\newitem{\renewcommand\item[1][\itemsymbol]{\vfill\svitem[##1]}}%
+\def\newpar{\def\par{\svpar\vfill}}%
+\newcommand\stretchon{%
+  \newpar%
+  \renewcommand\item[1][\itemsymbol]{\svitem[##1]\newitem}%
+  \renewenvironment{itemize}%
+    {\svitemize}{\svenditemize\newpar\par}%
+  \renewenvironment{center}%
+    {\svcenter\newpar}{\svendcenter\newpar}%
+  \renewenvironment{column}[2]%
+    {\svcolumn{##1}\setlength{\parskip}{\columnskip}##2}%
+    {\svendcolumn\vspace{\columnskip}}%
+}
+\newcommand\stretchoff{%
+  \let\par\svpar%
+  \let\item\svitem%
+  \let\itemize\svitemize%
+  \let\enditemize\svenditemize%
+  \let\center\svcenter%
+  \let\endcenter\svendcenter%
+  \let\column\svcolumn%
+  \let\endcolumn\svendcolumn%
+}
+
+
+
+\title[PATE for Differential Privacy]{{\Huge Differential Privacy using PATE\\}}
+\subtitle{
+\color{Dblue}{
+"Semi-supervised knowledge transfer for deep learning from private training data", 
+by Papernot, et al. https://arxiv.org/pdf/1610.05755.pdf}}
+
+\author[Dan Parshall Ph.D.]{Dan Parshall}
+
+
+\date[08/27/2021]{08/27/2021}
+
+
+
+\begin{document}
+\stretchoff
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%            TITLE PAGE                %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%***************************************%
+%-----------------1---------------------%
+\subsection*{1}
+\begin{frame}
+\titlepage
+\end{frame} 
+
+%***************************************%
+\subsection*{2}
+\stretchon
+
+
+\begin{frame}
+
+\frametitle{Question}
+
+"How can you build a predictive model which can be used by any of your clients, while ensuring that private data from one client isn't leaked to another?"
+
+\pause
+
+\begin{itemize}
+	\item Hospitals
+	\item Schools
+	\item Banks
+\end{itemize}
+
+\end{frame}
+
+
+
+%***************************************%
+\subsection*{2}
+\stretchon
+
+
+\begin{frame}
+
+\frametitle{Differential Privacy}
+
+\begin{itemize}
+	\item Why we need differential privacy
+	\item What $^*$is$^*$ differential privacy?
+	\item PATE model for differential privacy
+	%\item Practical example
+\end{itemize}
+
+
+\end{frame}
+
+
+
+
+
+
+
+%***************************************%
+\subsection*{3}
+\stretchoff
+
+\begin{frame}{Why we need differential privacy}
+
+\begin{minipage}[l]{0.6\linewidth}
+
+\begin{itemize}
+
+\item We want our users to feel comfortable sharing their data with us
+\medskip
+
+
+\item[$\bullet$] Even with limited query power, a database can be reconstructed
+	\begin{itemize}
+	\item 40\% of USA Census records can be uniquely identified
+	\end{itemize}
+\medskip
+
+
+\item[$\bullet$] ML models embed data in their weights 
+	\begin{itemize}
+	\item For SVM, the support vectors \emph{are} boundary data points
+	\end{itemize}
+\end{itemize}
+\end{minipage}%
+	\begin{minipage}[r]{0.4\linewidth}
+	\begin{center}
+	\includegraphics[scale=0.05]{images/ring}
+	\end{center}
+\end{minipage}
+
+\end{frame}
+
+
+
+%***************************************%
+%***************************************%
+
+
+\subsection*{DP: Coin Flip example}
+\stretchoff
+\onslide<1->{
+\begin{frame}{The secret ingredient is noise}}
+
+\begin{minipage}[l]{0.5\linewidth}
+	\begin{center}
+	\includegraphics[scale=0.65]{images/coin}
+	\end{center}
+
+\end{minipage}%
+\begin{minipage}[r]{0.45\linewidth}
+
+	Flip a coin and tell me ``Whom did you vote for in 2020?''
+	\medskip
+
+	\begin{itemize}
+	\item[$\bullet$] If the coin comes up heads, tell me honestly...
+
+	\pause
+	\item[$\bullet$] But if it comes up tails, then flip it again, and follow this rule:
+		\begin{itemize}
+		\item[$\bullet$] Heads, tell me ``Biden''
+		\item[$\bullet$] Tails, tell me ``Trump''
+		\end{itemize}
+	\end{itemize}
+
+	\bigskip
+	\pause
+	Because we know the distribution of the added noise, we can infer the true population distribution, while being ignorant of any individual response
+\end{minipage}%
+
+%\end{multicols}
+\end{frame}
+
+
+%***************************************%
+\subsection*{DP: definition}
+\stretchon
+\begin{frame}{Differential privacy: definition \& properties}
+\begin{multicols}{2}
+\begin{itemize}
+
+
+\item An algorithm is differentially private if the \textit{difference} between a query on a dataset with any particular record is ``very small'' compared to one without; we will add however much noise is needed to achieve that
+
+ %\item ``You will not be affected, adversely or otherwise, by allowing your data to be used in any study or analysis, no matter what other studies, data sets, or information sources, are available.''
+
+\end{itemize}
+
+\columnbreak
+
+\begin{itemize}
+\item Quantifiable
+\begin{itemize}
+\item Can calculate noise needed as function of ``privacy budget'', $\epsilon$ (smaller $\epsilon$ means more noise)
+\end{itemize}
+
+\item Cumulative
+\begin{itemize}
+\item Two successive DP algorithms have a privacy loss of at most $\epsilon = \epsilon_1 + \epsilon_2$
+
+\end{itemize}
+
+\item Future proof
+
+\begin{itemize}
+\item Even if other datasets become available
+\end{itemize}
+\end{itemize}
+
+\end{multicols}
+\end{frame}
+
+
+
+%***************************************%
+\subsection*{DP: Quantifying privacy}
+\stretchoff
+
+
+\begin{frame}{Calculating noise requires 2 parameters:}
+
+%% \begin{multicols}{2}
+\begin{minipage}[l]{0.5\linewidth}
+	\begin{itemize}
+	\item[$\bullet$] "sensitivity" of the query\\
+	\begin{center}
+	$\Delta f=\max \left\| f\left( x\right) -f\left( y\right) \right\|$ \\
+	\end{center}
+	Calculated by finding the maximum change in the query function when each data point is removed.
+	
+\bigskip
+	
+	\item[$\bullet$] privacy budget $\epsilon$ gets "used up" with each query\\
+	Computer scientists think $\epsilon$ should be $\approx$ 1\\
+	Social scientists think $\epsilon$ should be $\approx$ 10\\
+	FAANG use 2-4 for predictive text, emoji usage, etc.	\\
+	
+	\end{itemize}
+\end{minipage}%
+\begin{minipage}[c]{0.5\linewidth}
+
+	\begin{center}
+	\includegraphics[scale=0.15]{images/laplacian_gaussian_noise}
+	$\dfrac {\varepsilon }{2\cdot\Delta f}exp\left( \dfrac {-|x|\varepsilon }{\Delta f}\right) $
+	\end{center}
+
+\end{minipage} 
+
+
+\end{frame}
+
+
+
+%***************************************%
+
+
+\subsection*{DP: local-vs-central}
+\stretchon
+\begin{frame}{Types of differential privacy}
+\begin{multicols}{2}
+
+%%% LOCAL
+\begin{itemize}
+\item Local
+	\begin{itemize}
+	\item Noise added to individual responses
+	\item at the time data is generated
+	\item without regard for other results
+	\end{itemize}
+\end{itemize}
+
+\columnbreak
+
+%%% CENTRAL
+\begin{itemize}
+\item Central
+	\begin{itemize}
+	\item Noise added by trusted authority
+	\item after data have been collected
+	\item selectively, to preserve important correlations
+	\end{itemize}
+\end{itemize}
+
+\end{multicols}
+\end{frame}
+
+
+
+%***************************************%
+
+
+\subsection*{DP & ML}
+\stretchoff
+\begin{frame}{DP \& ML : like chocolate and peanut butter}
+\begin{multicols}{2}
+
+\begin{itemize}
+	\item[$\bullet$] The noise added by DP must be on the same order as the outliers
+		\begin{itemize}
+		\item[$\bullet$] Everyone receives ``equal protection'' (can be important legally)
+		
+		
+		\item[$\bullet$] This reduces overfitting to the outliers 
+		\end{itemize}
+
+	
+
+	\item The data are noisier, so larger sample sizes are required	
+	\item[$\bullet$] Ideal for situations when data wouldn't have been available at all
+
+\end{itemize}
+
+
+
+\columnbreak
+	\begin{center}
+	\includegraphics[scale=0.4]{images/noise}
+	\end{center}
+\end{multicols}
+\end{frame}
+
+
+%***************************************%
+%***************************************%
+%***************************************%
+
+
+\subsection*{PATE Overview}
+\stretchoff
+
+
+\begin{frame}{PATE Overview}
+
+Private Aggregation of Teacher Ensembles
+
+%% \begin{multicols}{2}
+	\begin{itemize}
+	\item Form disjoint partitions of private data
+	\item Train a model on each partition ("teachers")
+	\item Use ensemble prediction to label public data
+	\item Add noise to the ensemble to provide privacy
+	\item Train a "student" model using labeled public data
+
+	\end{itemize}
+
+	\begin{center}
+	\includegraphics[scale=0.35]{images/PATE_overview}
+	\end{center}
+
+
+
+
+\end{frame}
+
+
+
+
+
+%***************************************%
+\subsection*{Gap v Teachers}
+\stretchoff
+\begin{frame}{Teacher Consensus}
+
+ \begin{multicols}{2}
+%\begin{minipage}[l]{0.5\linewidth}
+For a given dataset, privacy loss is lower with
+	\begin{itemize}
+	\item More consensus, therefore
+	\item More teachers
+
+	\end{itemize}
+%\end{minipage}%
+%\begin{minipage}[c]{0.5\linewidth}
+\columnbreak
+	\begin{center}
+	\includegraphics[scale=0.35]{images/PATE__gap_vs_teachers}
+	\end{center}
+
+%\end{minipage} 
+\end{multicols}
+\end{frame}
+
+
+%***************************************%
+\subsection*{Noise v Acc}
+\stretchoff
+\begin{frame}{Noise vs Accuracy}
+
+ \begin{multicols}{2}
+%\begin{minipage}[l]{0.6\linewidth}
+For a given dataset, privacy loss is lower with
+	\begin{itemize}
+	\item More consensus
+	\item More teachers
+
+	\end{itemize}
+%\end{minipage}%
+%\begin{minipage}[c]{0.4\linewidth}
+\columnbreak
+	\begin{center}
+	\includegraphics[scale=0.35]{images/PATE__noise_vs_accuracy}
+	\end{center}
+
+%\end{minipage} 
+\end{multicols}
+\end{frame}
+
+
+
+
+
+
+%***************************************%
+\subsection*{Noise v Acc}
+\stretchoff
+\begin{frame}{Noise vs Accuracy}
+
+ \begin{multicols}{2}
+%\begin{minipage}[l]{0.6\linewidth}
+For a given dataset, privacy loss is lower with
+	\begin{itemize}
+	\item More consensus
+	\item More teachers
+
+	\end{itemize}
+%\end{minipage}%
+\columnbreak
+%\begin{minipage}[c]{0.4\linewidth}
+	\begin{center}
+	\includegraphics[scale=0.35]{images/PATE__noise_vs_accuracy}
+	\end{center}
+\end{multicols}
+%\end{minipage} 
+
+\end{frame}
+
+
+
+
+
+
+
+%***************************************%
+%***************************************%
+
+
+
+
+
+%***************************************%
+%***************************************%
+
+
+\subsection*{18}
+\stretchon
+\begin{frame}{Further reading}
+
+\begin{multicols}{2}
+\begin{itemize}
+
+\item PATE / Universal Model
+\medskip
+\item {\footnotesize \url{https://arxiv.org/abs/1610.05755 -}}\\ Semi-supervised Knowledge Transfer for Deep Learning from Private Training Data (original paper)
+\medskip
+\item {\footnotesize \url{https://arxiv.org/abs/1802.08908 -}}\\
+ Scalable Private Learning with PATE (updated algorithm, includes Gaussian noise and careful choice of training examples)
+
+
+\end{itemize}
+
+\columnbreak
+
+\begin{itemize}
+\item RAPPOR / text analysis
+\medskip
+\item {\footnotesize \url{https://arxiv.org/abs/1407.6981 -}}\\
+ RAPPOR: Randomized Aggregatable Privacy-Preserving Ordinal Response
+\medskip
+\item {\footnotesize \url{https://arxiv.org/abs/1503.01214 -}\\}
+ Building a RAPPOR with the Unknown: Privacy-Preserving Learning of Associations and Data Dictionaries
+
+\end{itemize}
+
+\end{multicols}
+\end{frame}
+
+
+
+%***************************************%
+\subsection*{19}
+\stretchon
+\begin{frame}{Thank you!}
+\end{frame}
+
+
+
+
+%***************************************%
+
+
+\subsection*{A1}
+\stretchon
+\begin{frame}{Attribution}
+
+\begin{itemize}
+
+\item[$\bullet$] \color{mygray}{\url{https://commons.wikimedia.org/wiki/File:Coin_Toss_(3635981474).jpg}}
+
+\item[$\bullet$] \color{mygray}{\url{https://commons.wikimedia.org/wiki/File:Anscombe's_quartet_2.svg}}
+
+\item[$\bullet$] \color{mygray}{\url{https://commons.wikimedia.org/wiki/File:Emoji_u1f3eb.svg}}
+
+\item[$\bullet$] \color{mygray}{\url{https://commons.wikimedia.org/wiki/File:NeuralNetwork.png}}
+
+
+
+\end{itemize}
+\end{frame}
+
+\end{document}
